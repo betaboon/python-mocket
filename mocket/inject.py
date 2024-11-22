@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import socket
 import ssl
+from pathlib import Path
 
 import urllib3
 
@@ -34,9 +35,9 @@ def enable(
     Mocket._namespace = namespace
     Mocket._truesocket_recording_dir = truesocket_recording_dir
 
-    if truesocket_recording_dir and not os.path.isdir(truesocket_recording_dir):
-        # JSON dumps will be saved here
-        raise AssertionError
+    recording_file = Mocket.get_recording_file()
+    if recording_file and recording_file.exists():
+        Mocket._recordings.load(recording_file)
 
     socket.socket = socket.__dict__["socket"] = MocketSocket
     socket._socketobject = socket.__dict__["_socketobject"] = MocketSocket
@@ -89,6 +90,10 @@ def disable() -> None:
         true_urllib3_ssl_wrap_socket,
         true_urllib3_wrap_socket,
     )
+
+    recording_file = Mocket.get_recording_file()
+    if recording_file:
+        Mocket._recordings.save(recording_file)
 
     socket.socket = socket.__dict__["socket"] = true_socket
     socket._socketobject = socket.__dict__["_socketobject"] = true_socket

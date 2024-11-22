@@ -306,6 +306,9 @@ class HttpEntryTestCase(HttpTestCase):
             },
         )
 
+        # FIXME this test will always pass
+        #       it only tries to load the file that had been passed
+        #       it will not check if the file has actually been used
         dump_filename = os.path.join(
             Mocket.get_truesocket_recording_dir(), Mocket.get_namespace() + ".json"
         )

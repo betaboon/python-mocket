@@ -3,9 +3,11 @@ from __future__ import annotations
 import collections
 import itertools
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import mocket.inject
+from mocket.recording import MocketRecordStorage
 
 # NOTE this is here for backwards-compat to keep old import-paths working
 # from mocket.socket import MocketSocket as MocketSocket
@@ -22,6 +24,7 @@ class Mocket:
     _requests: ClassVar[list] = []
     _namespace: ClassVar[str] = str(id(_entries))
     _truesocket_recording_dir: ClassVar[str | None] = None
+    _recordings: ClassVar[MocketRecordStorage] = MocketRecordStorage()
 
     enable = mocket.inject.enable
     disable = mocket.inject.disable
@@ -69,6 +72,7 @@ class Mocket:
         cls._socket_pairs = {}
         cls._entries = collections.defaultdict(list)
         cls._requests = []
+        cls._recordings.reset()
 
     @classmethod
     def last_request(cls):
@@ -101,3 +105,31 @@ class Mocket:
         """Mocket checks that all entries have been served at least once."""
         if not all(entry._served for entry in itertools.chain(*cls._entries.values())):
             raise AssertionError("Some Mocket entries have not been served")
+
+    @classmethod
+    def get_recording_file(cls) -> Path | None:
+        if cls._truesocket_recording_dir is None:
+            return None
+
+        recordings_dir = Path(cls._truesocket_recording_dir)
+        return recordings_dir / f"{cls._namespace}.json"
+
+    @classmethod
+    def get_recorded_response(
+        cls,
+        host: str,
+        port: int,
+        request: bytes,
+    ) -> bytes | None:
+        record = cls._recordings.get_record(
+            address=(host, port),
+            request=request,
+        )
+        if record is None:
+            return None
+        return record.response
+
+    @classmethod
+    def get_recorded_responses(cls, host: str, port: int) -> list[bytes]:
+        records = cls._recordings.get_records(address=(host, port))
+        return [r.response for r in records]
