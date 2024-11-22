@@ -24,7 +24,7 @@ class Mocket:
     _requests: ClassVar[list] = []
     _namespace: ClassVar[str] = str(id(_entries))
     _truesocket_recording_dir: ClassVar[str | None] = None
-    _recordings: ClassVar[MocketRecordStorage] = MocketRecordStorage()
+    _record_storage: ClassVar[MocketRecordStorage] = MocketRecordStorage()
 
     enable = mocket.inject.enable
     disable = mocket.inject.disable
@@ -72,7 +72,8 @@ class Mocket:
         cls._socket_pairs = {}
         cls._entries = collections.defaultdict(list)
         cls._requests = []
-        cls._recordings.reset()
+        if cls._record_storage is not None:
+            cls._record_storage.reset()
 
     @classmethod
     def last_request(cls):
@@ -107,12 +108,12 @@ class Mocket:
             raise AssertionError("Some Mocket entries have not been served")
 
     @classmethod
-    def get_recording_file(cls) -> Path | None:
-        if cls._truesocket_recording_dir is None:
-            return None
+    def get_recorded_responses(cls, host: str, port: int) -> list[bytes]:
+        if cls._record_storage is None:
+            return []
 
-        recordings_dir = Path(cls._truesocket_recording_dir)
-        return recordings_dir / f"{cls._namespace}.json"
+        records = cls._record_storage.get_records(address=(host, port))
+        return [r.response for r in records]
 
     @classmethod
     def get_recorded_response(
@@ -121,15 +122,13 @@ class Mocket:
         port: int,
         request: bytes,
     ) -> bytes | None:
-        record = cls._recordings.get_record(
+        if not cls._record_storage:
+            return None
+
+        record = cls._record_storage.get_record(
             address=(host, port),
             request=request,
         )
         if record is None:
             return None
         return record.response
-
-    @classmethod
-    def get_recorded_responses(cls, host: str, port: int) -> list[bytes]:
-        records = cls._recordings.get_records(address=(host, port))
-        return [r.response for r in records]

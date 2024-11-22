@@ -14,6 +14,8 @@ try:  # pragma: no cover
 except ImportError:
     pyopenssl_override = False
 
+from mocket.recording import MocketRecordStorage
+
 
 def enable(
     namespace: str | None = None,
@@ -35,9 +37,10 @@ def enable(
     Mocket._namespace = namespace
     Mocket._truesocket_recording_dir = truesocket_recording_dir
 
-    recording_file = Mocket.get_recording_file()
-    if recording_file and recording_file.exists():
-        Mocket._recordings.load(recording_file)
+    if truesocket_recording_dir and namespace:
+        recording_dir = Path(truesocket_recording_dir)
+        recording_file = recording_dir / f"{namespace}.json"
+        Mocket._record_storage = MocketRecordStorage(file=recording_file)
 
     socket.socket = socket.__dict__["socket"] = MocketSocket
     socket._socketobject = socket.__dict__["_socketobject"] = MocketSocket
@@ -90,10 +93,6 @@ def disable() -> None:
         true_urllib3_ssl_wrap_socket,
         true_urllib3_wrap_socket,
     )
-
-    recording_file = Mocket.get_recording_file()
-    if recording_file:
-        Mocket._recordings.save(recording_file)
 
     socket.socket = socket.__dict__["socket"] = true_socket
     socket._socketobject = socket.__dict__["_socketobject"] = true_socket

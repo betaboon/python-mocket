@@ -234,10 +234,8 @@ class MocketSocket:
         if not MocketMode().is_allowed(self._address):
             MocketMode.raise_not_allowed()
 
-        # req = decode_from_bytes(data)
-
         # try to get the response from recordings
-        record = Mocket._recordings.get_record(
+        record = Mocket._record_storage.get_record(
             address=self._address,
             request=data,
         )
@@ -263,14 +261,11 @@ class MocketSocket:
                 break
             response += new_content
 
-        Mocket._recordings.put_record(
+        Mocket._record_storage.put_record(
             address=self._address,
             request=data,
             response=response,
         )
-        recording_file = Mocket.get_recording_file()
-        if recording_file:
-            Mocket._recordings.save(file=recording_file)
 
         return response
 

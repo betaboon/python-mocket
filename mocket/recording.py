@@ -7,7 +7,6 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from devtools import debug
 
@@ -24,7 +23,7 @@ with contextlib.suppress(ImportError):
 with contextlib.suppress(ImportError):
     from xxhash import xxh32 as xxhash_xxh32
 
-    hash_function = xxhash_xxh32  # type: ignore[assignment]
+    hash_function = xxhash_xxh32
 
 
 def _hash_prepare_request(data: bytes) -> bytes:
@@ -64,51 +63,21 @@ def hexload(string: str) -> bytes:
 class MocketRecord:
     host: str
     port: int
-    # request_signature: str
     request: bytes
     response: bytes
 
 
-class MocketRecordJSONEncoder(json.JSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, MocketRecord):
-            return dict(request=obj.request, response=obj.response)
-
-        if isinstance(obj, bytes):
-            return hexdump(obj)
-
-        debug(obj)
-
-        return super().default(obj)
-
-
 class MocketRecordStorage:
-    def __init__(self) -> None:
+    def __init__(self, file: Path | None = None) -> None:
+        self._file = file
         self._records: defaultdict[Address, defaultdict[str, MocketRecord]]
+
         self.reset()
+        if self._file is not None and self._file.exists():
+            self.load(self._file)
 
     def reset(self) -> None:
         self._records = defaultdict(defaultdict)
-
-    def save(self, file: Path) -> None:
-        # debug(self._records)
-        d = defaultdict(lambda: defaultdict(defaultdict))
-        for address, signature_record in self._records.items():
-            host, port = address
-            for signature, record in signature_record.items():
-                d[host][str(port)][signature] = dict(
-                    request=decode_from_bytes(record.request),
-                    response=hexdump(record.response),
-                )
-        # debug(d)
-        json_data = json.dumps(
-            d,
-            # cls=MocketRecordJSONEncoder,
-            # indent=4,
-            indent=4,
-            sort_keys=True,
-        )
-        file.write_text(json_data)
 
     def load(self, file: Path, reset: bool = True) -> None:
         if reset:
@@ -134,7 +103,39 @@ class MocketRecordStorage:
                         request=request_data,
                         response=hexload(record["response"]),
                     )
-        debug(self._records)
+
+    def save(self, file: Path) -> None:
+        # FIXME change name and type
+        d = defaultdict(lambda: defaultdict(defaultdict))
+        for address, signature_record in self._records.items():
+            host, port = address
+            for signature, record in signature_record.items():
+                d[host][str(port)][signature] = dict(
+                    request=decode_from_bytes(record.request),
+                    response=hexdump(record.response),
+                )
+
+        json_data = json.dumps(d, indent=4, sort_keys=True)
+        file.parent.mkdir(exist_ok=True)
+        file.write_text(json_data)
+
+    def get_records(self, address: Address) -> list[MocketRecord]:
+        return list(self._records[address].values())
+
+    def get_record(self, address: Address, request: bytes) -> MocketRecord | None:
+        # FIXME encode should not be required
+        request = encode_to_bytes(request)
+
+        # NOTE for backward-compat
+        request_signature_fallback = _hash_request_fallback(request)
+        if request_signature_fallback in self._records[address]:
+            return self._records[address].get(request_signature_fallback)
+
+        request_signature = _hash_request(request)
+        if request_signature in self._records[address]:
+            return self._records[address][request_signature]
+
+        return None
 
     def put_record(
         self,
@@ -142,7 +143,6 @@ class MocketRecordStorage:
         request: bytes,
         response: bytes,
     ) -> None:
-        debug("putting record", address, request)
         # FIXME encode should not be required
         request = encode_to_bytes(request)
 
@@ -156,32 +156,12 @@ class MocketRecordStorage:
 
         # NOTE for backward-compat
         request_signature_fallback = _hash_request_fallback(request)
-        debug(request_signature_fallback)
         if request_signature_fallback in self._records[address]:
             self._records[address][request_signature_fallback] = record
             return
 
         request_signature = _hash_request(request)
-        debug(request_signature)
         self._records[address][request_signature] = record
 
-    def get_record(self, address: Address, request: bytes) -> MocketRecord | None:
-        debug("getting record", request)
-        # FIXME encode should not be required
-        request = encode_to_bytes(request)
-
-        # NOTE for backward-compat
-        request_signature_fallback = _hash_request_fallback(request)
-        debug(request_signature_fallback)
-        if request_signature_fallback in self._records[address]:
-            return self._records[address].get(request_signature_fallback)
-
-        request_signature = _hash_request(request)
-        debug(request_signature)
-        if request_signature in self._records[address]:
-            return self._records[address][request_signature]
-
-        return None
-
-    def get_records(self, address: Address) -> list[MocketRecord]:
-        return list(self._records[address].values())
+        if self._file is not None:
+            self.save(file=self._file)
