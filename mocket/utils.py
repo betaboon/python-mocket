@@ -6,12 +6,6 @@ from typing import Callable
 
 from mocket.compat import decode_from_bytes, encode_to_bytes
 
-# NOTE this is here for backwards-compat to keep old import-paths working
-from mocket.io import MocketSocketIO as MocketSocketCore
-
-# NOTE this is here for backwards-compat to keep old import-paths working
-from mocket.mode import MocketMode
-
 SSL_PROTOCOL = ssl.PROTOCOL_TLSv1_2
 
 
@@ -45,8 +39,6 @@ def get_mocketize(wrapper_: Callable) -> Callable:
 
 
 __all__ = (
-    "MocketSocketCore",
-    "MocketMode",
     "SSL_PROTOCOL",
     "hexdump",
     "hexload",
