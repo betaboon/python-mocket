@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import os
 import socket
@@ -29,6 +30,7 @@ def enable(
     namespace: str | None = None,
     truesocket_recording_dir: str | None = None,
 ) -> None:
+    from mocket.asyncio.sslproto import MocketSSLProtocol
     from mocket.socket import (
         MocketSocket,
         mock_create_connection,
@@ -59,6 +61,8 @@ def enable(
         # stdlib: ssl
         (ssl, "SSLContext"): MocketSSLContext,
         (ssl, "wrap_socket"): mock_wrap_socket,  # python < 3.12.0
+        # stdlib: asyncio
+        (asyncio.sslproto, "SSLProtocol"): MocketSSLProtocol,
         # urllib3
         (urllib3.connection, "match_hostname"): mock_urllib3_match_hostname,
         (urllib3.connection, "ssl_wrap_socket"): mock_urllib3_ssl_wrap_socket,

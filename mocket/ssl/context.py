@@ -43,6 +43,7 @@ class MocketSSLContext(_MocketSSLContext):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._set_dummy_methods()
+        self._sslprotocol_sockets = {}
 
     def _set_dummy_methods(self) -> None:
         def dummy_method(*args: Any, **kwargs: Any) -> Any:
@@ -69,6 +70,10 @@ class MocketSSLContext(_MocketSSLContext):
         debug("WRAPPING BIO")
         ssl_obj = MocketSSLObject()
         ssl_obj._host = server_hostname
+        if server_hostname in self._sslprotocol_sockets:
+            sock = self._sslprotocol_sockets[server_hostname]
+            # debug(sock)
+            debug(sock._io)
         return ssl_obj
 
 

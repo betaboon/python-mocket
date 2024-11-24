@@ -105,7 +105,7 @@ class MocketSocket:
         self._port = None
         self._address = None
 
-        self._io = None
+        self._io = MocketSocketIO((self._host, self._port))
         self._entry = None
 
     def __str__(self) -> str:
@@ -136,16 +136,18 @@ class MocketSocket:
 
     @property
     def io(self) -> MocketSocketIO:
-        if self._io is None:
-            self._io = MocketSocketIO((self._host, self._port))
         return self._io
 
     def fileno(self) -> int:
+        debug("GET FILENO", self.__class__, id(self))
+        r_fd, w_fd = self._io.get_fd_pair()
+        Mocket.set_pair(self._io._address, (r_fd, w_fd))
+
         address = (self._host, self._port)
-        r_fd, w_fd = Mocket.get_pair(address)
-        if not r_fd:
-            r_fd, w_fd = os.pipe()
-            Mocket.set_pair(address, (r_fd, w_fd))
+        # r_fd, w_fd = Mocket.get_pair(self._io._address)
+        # if not r_fd:
+        #     r_fd, w_fd = os.pipe()
+        #     Mocket.set_pair(self._io._address, (r_fd, w_fd))
         debug("GOT FILENO", address, r_fd, w_fd, self.__class__, id(self))
         return r_fd
 
@@ -227,7 +229,9 @@ class MocketSocket:
         return len(data)
 
     def recv(self, buffersize: int, flags: int | None = None) -> bytes:
-        r_fd, _ = Mocket.get_pair((self._host, self._port))
+        # r_fd, _ = Mocket.get_pair((self._host, self._port))
+        debug("recv", self.__class__, id(self))
+        r_fd, _ = Mocket.get_pair(self._io._address)
         if r_fd:
             return os.read(r_fd, buffersize)
         data = self.io.read(buffersize)
