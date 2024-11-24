@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from devtools import debug
+
 from mocket.socket import MocketSocket
 from mocket.ssl.socket import MocketSSLSocket
 
@@ -63,10 +65,14 @@ class MocketSSLContext(_MocketSSLContext):
         outgoing: Any,  # _ssl.MemoryBIO
         server_side: bool = False,
         server_hostname: str | bytes | None = None,
-    ) -> MocketSSLSocket:
-        ssl_obj = MocketSSLSocket()
+    ) -> MocketSSLObject:
+        debug("WRAPPING BIO")
+        ssl_obj = MocketSSLObject()
         ssl_obj._host = server_hostname
         return ssl_obj
+
+
+class MocketSSLObject(MocketSSLSocket): ...
 
 
 def mock_wrap_socket(

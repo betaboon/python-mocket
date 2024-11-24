@@ -11,6 +11,7 @@ from json.decoder import JSONDecodeError
 from types import TracebackType
 from typing import Any, Type
 
+from devtools import debug
 from typing_extensions import Self
 
 from mocket.compat import decode_from_bytes, encode_to_bytes
@@ -141,10 +142,11 @@ class MocketSocket:
 
     def fileno(self) -> int:
         address = (self._host, self._port)
-        r_fd, _ = Mocket.get_pair(address)
+        r_fd, w_fd = Mocket.get_pair(address)
         if not r_fd:
             r_fd, w_fd = os.pipe()
             Mocket.set_pair(address, (r_fd, w_fd))
+        debug("GOT FILENO", address, r_fd, w_fd, self.__class__, id(self))
         return r_fd
 
     def gettimeout(self) -> float | None:
@@ -179,6 +181,7 @@ class MocketSocket:
         return true_gethostbyname(self._address[0]), self._address[1]
 
     def connect(self, address: Address) -> None:
+        debug("CONNECT", address, self.__class__, id(self))
         self._address = self._host, self._port = address
         Mocket._address = address
 
@@ -189,6 +192,7 @@ class MocketSocket:
         return Mocket.get_entry(self._host, self._port, data)
 
     def sendall(self, data, entry=None, *args, **kwargs):
+        debug("SENDALL", self._address, self.__class__, id(self))
         if entry is None:
             entry = self.get_entry(data)
 

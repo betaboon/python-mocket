@@ -4,6 +4,8 @@ import ssl
 from datetime import datetime, timedelta
 from typing import Any
 
+from devtools import debug
+
 from mocket.compat import encode_to_bytes
 from mocket.mocket import Mocket
 from mocket.socket import MocketSocket
@@ -33,8 +35,10 @@ class MocketSSLSocket(MocketSocket):
         self._did_handshake = True
 
     def getpeercert(self, binary_form: bool = False) -> _PeerCertRetDictType:
+        debug("GETTING CERT", self._address, self.__class__, id(self))
         if not (self._host and self._port):
             self._address = self._host, self._port = Mocket._address
+        debug("SET ADDRESS", self._address, self.__class__, id(self))
 
         now = datetime.now()
         shift = now + timedelta(days=30 * 12)

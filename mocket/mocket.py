@@ -5,6 +5,8 @@ import itertools
 import os
 from typing import TYPE_CHECKING, ClassVar
 
+from devtools import debug
+
 import mocket.inject
 
 # NOTE this is here for backwards-compat to keep old import-paths working
@@ -32,7 +34,9 @@ class Mocket:
         Given the id() of the caller, return a pair of file descriptors
         as a tuple of two integers: (<read_fd>, <write_fd>)
         """
-        return cls._socket_pairs.get(address, (None, None))
+        pair = cls._socket_pairs.get(address, (None, None))
+        debug("GOT PAIR", address, pair)
+        return pair
 
     @classmethod
     def set_pair(cls, address: Address, pair: tuple[int, int]) -> None:
@@ -41,6 +45,7 @@ class Mocket:
         as a tuple of two integers: (<read_fd>, <write_fd>)
         """
         cls._socket_pairs[address] = pair
+        debug("SET PAIR", address, pair)
 
     @classmethod
     def register(cls, *entries: MocketEntry) -> None:
