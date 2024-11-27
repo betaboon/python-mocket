@@ -1,135 +1,140 @@
-from mocket import mocketize
+from __future__ import annotations
+
 from mocket.async_mocket import async_mocketize
-from mocket.compat import ENCODING
+from mocket.http import (
+    MocketHttpEntry,
+    MocketHttpMethod,
+    MocketHttpRequest,
+    MocketHttpResponse,
+)
 from mocket.mocket import Mocket
-from mocket.mockhttp import Entry as MocketHttpEntry
-from mocket.mockhttp import Request as MocketHttpRequest
-from mocket.mockhttp import Response as MocketHttpResponse
+from mocket.mocketizer import mocketize
 
 
-def httprettifier_headers(headers):
-    return {k.lower().replace("_", "-"): v for k, v in headers.items()}
+class MocketHttprettyResponse(MocketHttpResponse):
+    SERVER = "Python/HTTPretty"
 
+    def __init__(
+        self,
+        body: bytes | str = b"",
+        status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(
+            status_code=status,
+            headers=headers,
+            body=body,
+        )
 
-class Request(MocketHttpRequest):
     @property
-    def body(self):
-        return super().body.encode(ENCODING)
+    def status(self) -> int:
+        return self.status_code
+
+    @classmethod
+    def _format_header_key(cls, key: str) -> str:
+        return key.lower().replace("_", "-")
+
+
+class MocketHTTPretty:
+    Response = MocketHttprettyResponse
+
+    CONNECT = MocketHttpMethod.CONNECT
+    DELETE = MocketHttpMethod.DELETE
+    GET = MocketHttpMethod.GET
+    HEAD = MocketHttpMethod.HEAD
+    OPTIONS = MocketHttpMethod.OPTIONS
+    PATCH = MocketHttpMethod.PATCH
+    POST = MocketHttpMethod.POST
+    PUT = MocketHttpMethod.PUT
+    TRACE = MocketHttpMethod.TRACE
 
     @property
-    def headers(self):
-        return httprettifier_headers(super().headers)
+    def latest_requests(self) -> list[MocketHttpRequest]:
+        return Mocket.request_list()
+
+    @property
+    def last_request(self) -> MocketHttpRequest:
+        return Mocket.last_request()
+
+    def register_uri(
+        self,
+        method: MocketHttpMethod,
+        uri: str,
+        body: bytes | str = b"HTTPretty :)",
+        adding_headers: dict[str, str] | None = None,
+        forcing_headers: dict[str, str] | None = None,
+        status: int = 200,
+        responses: list[MocketHttpResponse] | None = None,
+        match_querystring: bool = False,
+        priority: int = 0,
+        **headers: str,
+    ) -> None:
+        if adding_headers is not None:
+            headers.update(adding_headers)
+
+        if responses is None:
+            response = MocketHttprettyResponse(
+                body=body,
+                status=status,
+                headers=headers,
+            )
+            responses = [response]
+
+        if forcing_headers is not None:
+            for r in responses:
+                r.set_headers(forcing_headers)
+
+        MocketHttpEntry.register(
+            method=method,
+            uri=uri,
+            responses=responses,
+            match_querystring=match_querystring,
+        )
 
 
-class Response(MocketHttpResponse):
-    def get_protocol_data(self, str_format_fun_name="lower"):
-        if "server" in self.headers and self.headers["server"] == "Python/Mocket":
-            self.headers["server"] = "Python/HTTPretty"
-        return super().get_protocol_data(str_format_fun_name=str_format_fun_name)
+HTTPretty = MocketHTTPretty()
+httpretty = HTTPretty
 
-    def set_base_headers(self):
-        super().set_base_headers()
-        self.headers = httprettifier_headers(self.headers)
+Response = HTTPretty.Response
 
-    original_set_base_headers = set_base_headers
-
-    def set_extra_headers(self, headers):
-        self.headers.update(headers)
-
-
-class Entry(MocketHttpEntry):
-    request_cls = Request
-    response_cls = Response
-
+CONNECT = HTTPretty.CONNECT
+DELETE = HTTPretty.DELETE
+GET = HTTPretty.GET
+HEAD = HTTPretty.HEAD
+OPTIONS = HTTPretty.OPTIONS
+PATCH = HTTPretty.PATCH
+POST = HTTPretty.POST
+PUT = HTTPretty.PUT
+TRACE = HTTPretty.TRACE
 
 activate = mocketize
 httprettified = mocketize
 async_httprettified = async_mocketize
+register_uri = HTTPretty.register_uri
 
 enable = Mocket.enable
 disable = Mocket.disable
 reset = Mocket.reset
 
-GET = Entry.GET
-PUT = Entry.PUT
-POST = Entry.POST
-DELETE = Entry.DELETE
-HEAD = Entry.HEAD
-PATCH = Entry.PATCH
-OPTIONS = Entry.OPTIONS
 
-
-def register_uri(
-    method,
-    uri,
-    body="HTTPretty :)",
-    adding_headers=None,
-    forcing_headers=None,
-    status=200,
-    responses=None,
-    match_querystring=False,
-    priority=0,
-    **headers,
-):
-    headers = httprettifier_headers(headers)
-
-    if adding_headers is not None:
-        headers.update(httprettifier_headers(adding_headers))
-
-    if forcing_headers is not None:
-
-        def force_headers(self):
-            self.headers = httprettifier_headers(forcing_headers)
-
-        Response.set_base_headers = force_headers
-    else:
-        Response.set_base_headers = Response.original_set_base_headers
-
-    if responses:
-        Entry.register(method, uri, *responses)
-    else:
-        Entry.single_register(
-            method,
-            uri,
-            body=body,
-            status=status,
-            headers=headers,
-            match_querystring=match_querystring,
-        )
-
-
-class MocketHTTPretty:
-    Response = Response
-
-    def __getattr__(self, name):
-        if name == "last_request":
-            return Mocket.last_request()
-        if name == "latest_requests":
-            return Mocket.request_list()
-        return getattr(Entry, name)
-
-
-HTTPretty = MocketHTTPretty()
-HTTPretty.register_uri = register_uri
-httpretty = HTTPretty
-
-__all__ = (
+__all__ = [
     "HTTPretty",
     "httpretty",
     "activate",
-    "async_httprettified",
     "httprettified",
+    "async_httprettified",
+    "register_uri",
     "enable",
     "disable",
     "reset",
-    "Response",
-    "GET",
-    "PUT",
-    "POST",
+    "CONNECT",
     "DELETE",
+    "GET",
     "HEAD",
+    "OPTIONS",
     "PATCH",
-    "register_uri",
-    "str",
-    "bytes",
-)
+    "POST",
+    "PUT",
+    "TRACE",
+    "Response",
+]

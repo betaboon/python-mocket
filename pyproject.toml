@@ -31,6 +31,8 @@ dependencies = [
     "decorator>=4.0.0",
     "urllib3>=1.25.3",
     "h11",
+    "devtools>=0.12.2",
+    "typing-extensions>=4.12.2",
 ]
 dynamic = ["version"]
 
@@ -114,6 +116,9 @@ select = [
 # Unlike Flake8, default to a complexity level of 10.
 # https://en.wikipedia.org/wiki/Cyclomatic_complexity#Limiting_complexity_during_development
 max-complexity = 8
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
 
 [tool.mypy]
 python_version = "3.8"

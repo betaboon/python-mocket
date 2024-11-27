@@ -131,5 +131,7 @@ class Mocket:
     @classmethod
     def assert_fail_if_entries_not_served(cls) -> None:
         """Mocket checks that all entries have been served at least once."""
-        if not all(entry._served for entry in itertools.chain(*cls._entries.values())):
+        if not all(
+            entry.served_response for entry in itertools.chain(*cls._entries.values())
+        ):
             raise AssertionError("Some Mocket entries have not been served")
